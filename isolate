@@ -85,6 +85,12 @@ STANDARD_RO_BINDS=(
     "/etc/resolv.conf"
     "/etc/ssl"
     "/etc/ca-certificates"
+    "/usr/local/bin"
+    "/home/jgaines/.local/bin"
+    "/home/jgaines/.local/share/uv/tools"
+    "/home/jgaines/.local/latest"
+    "/home/jgaines/.local/share/mise/installs"
+    "/home/linuxbrew/.linuxbrew"
 )
 
 # Build the ro-bind arguments array
