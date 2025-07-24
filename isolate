@@ -27,11 +27,10 @@ fi
 
 # Get the real path to opencode binary (resolves symlinks)
 OPENCODE_PATH="$(readlink -f "$(which opencode)")"
-OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 
 # We need to mount the directory containing the real opencode binary
 # Get the parent directories we need to mount
-OPENCODE_MOUNT_BASE="$OPENCODE_DIR"
+OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
@@ -55,7 +54,7 @@ exec bwrap \
     --ro-bind /etc/resolv.conf /etc/resolv.conf \
     --ro-bind /etc/ssl /etc/ssl \
     --ro-bind /etc/ca-certificates /etc/ca-certificates \
-    --ro-bind "$OPENCODE_MOUNT_BASE" "$OPENCODE_MOUNT_BASE" \
+    --ro-bind "$OPENCODE_DIR" "$OPENCODE_DIR" \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
     --tmpfs /tmp \
