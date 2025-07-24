@@ -35,10 +35,39 @@ OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
 
+# Parse command line arguments for --extra flag
+EXTRA_MOUNTS=()
+OPENCODE_ARGS=()
+PARSING_EXTRA=false
+
+for arg in "$@"; do
+    if [[ "$arg" == "--extra" ]]; then
+        PARSING_EXTRA=true
+    elif [[ "$PARSING_EXTRA" == true && "$arg" != --* ]]; then
+        # Resolve to absolute path and validate existence
+        EXTRA_PATH="$(readlink -f "$arg")"
+        if [[ -e "$EXTRA_PATH" ]]; then
+            EXTRA_MOUNTS+=("--bind" "$EXTRA_PATH" "$EXTRA_PATH")
+            echo "Adding extra mount: $EXTRA_PATH"
+        else
+            echo "Warning: Extra path does not exist: $arg"
+            exit 1
+        fi
+    else
+        PARSING_EXTRA=false
+        if [[ "$arg" != "--extra" ]]; then
+            OPENCODE_ARGS+=("$arg")
+        fi
+    fi
+done
+
 echo "Starting isolated opencode session..."
 echo "Repository: $REPO_DIR"
 echo "Working directory inside sandbox: /workspace"
 echo "OpenCode binary: $OPENCODE_PATH"
+if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
+    echo "Extra mounts: $((${#EXTRA_MOUNTS[@]} / 3))"
+fi
 echo ""
 
 # Run opencode in bubblewrap sandbox
@@ -57,6 +86,7 @@ exec bwrap \
     --ro-bind "$OPENCODE_DIR" "$OPENCODE_DIR" \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
+    "${EXTRA_MOUNTS[@]}" \
     --tmpfs /tmp \
     --tmpfs /var/tmp \
     --tmpfs /run \
@@ -67,4 +97,4 @@ exec bwrap \
     --new-session \
     --die-with-parent \
     --chdir /workspace \
-    "$OPENCODE_PATH" "$@"
+    "$OPENCODE_PATH" "${OPENCODE_ARGS[@]}"
