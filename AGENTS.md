@@ -32,10 +32,10 @@ This is a bash-based repository containing the `isolate` script for running open
 - Validate file paths and existence before operations
 
 ## Version Control
-This project uses Git for version control.
+This project uses Jujutsu for version control.
 
 ### Workflow
-- After every prompt/change, run `git status` to check for modifications
-- If changes are detected, stage and commit them with: `git add . && git commit -m "description"`
+- After every prompt/change, run `jj status` to check for modifications
+- If changes are detected, commit them with: `jj commit -m "description" --author "opencode <opencode@jgaines.com>"`
 - Use descriptive commit messages that explain what was changed
 - Follow conventional commit format when possible
