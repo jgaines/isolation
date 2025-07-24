@@ -72,6 +72,27 @@ for arg in "$@"; do
     fi
 done
 
+# Define standard read-only bind mounts
+STANDARD_RO_BINDS=(
+    "/usr"
+    "/lib"
+    "/lib64"
+    "/bin"
+    "/sbin"
+    "/etc/passwd"
+    "/etc/group"
+    "/etc/nsswitch.conf"
+    "/etc/resolv.conf"
+    "/etc/ssl"
+    "/etc/ca-certificates"
+)
+
+# Build the ro-bind arguments array
+RO_BIND_ARGS=()
+for path in "${STANDARD_RO_BINDS[@]}"; do
+    RO_BIND_ARGS+=("--ro-bind" "$path" "$path")
+done
+
 echo "Starting isolated opencode session..."
 echo "Repository: $REPO_DIR"
 echo "Working directory inside sandbox: /workspace"
@@ -83,17 +104,7 @@ echo ""
 
 # Run opencode in bubblewrap sandbox
 exec bwrap \
-    --ro-bind /usr /usr \
-    --ro-bind /lib /lib \
-    --ro-bind /lib64 /lib64 \
-    --ro-bind /bin /bin \
-    --ro-bind /sbin /sbin \
-    --ro-bind /etc/passwd /etc/passwd \
-    --ro-bind /etc/group /etc/group \
-    --ro-bind /etc/nsswitch.conf /etc/nsswitch.conf \
-    --ro-bind /etc/resolv.conf /etc/resolv.conf \
-    --ro-bind /etc/ssl /etc/ssl \
-    --ro-bind /etc/ca-certificates /etc/ca-certificates \
+    "${RO_BIND_ARGS[@]}" \
     --ro-bind "$OPENCODE_DIR" "$OPENCODE_DIR" \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
