@@ -35,27 +35,38 @@ OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
 
-# Parse command line arguments for --extra flag
+# Parse command line arguments for --rw and --ro flags
 EXTRA_MOUNTS=()
 OPENCODE_ARGS=()
-PARSING_EXTRA=false
+PARSING_RW=false
+PARSING_RO=false
 
 for arg in "$@"; do
-    if [[ "$arg" == "--extra" ]]; then
-        PARSING_EXTRA=true
-    elif [[ "$PARSING_EXTRA" == true && "$arg" != --* ]]; then
+    if [[ "$arg" == "--rw" ]]; then
+        PARSING_RW=true
+        PARSING_RO=false
+    elif [[ "$arg" == "--ro" ]]; then
+        PARSING_RO=true
+        PARSING_RW=false
+    elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true) && "$arg" != --* ]]; then
         # Resolve to absolute path and validate existence
         EXTRA_PATH="$(readlink -f "$arg")"
         if [[ -e "$EXTRA_PATH" ]]; then
-            EXTRA_MOUNTS+=("--bind" "$EXTRA_PATH" "$EXTRA_PATH")
-            echo "Adding extra mount: $EXTRA_PATH"
+            if [[ "$PARSING_RW" == true ]]; then
+                EXTRA_MOUNTS+=("--bind" "$EXTRA_PATH" "$EXTRA_PATH")
+                echo "Adding read-write mount: $EXTRA_PATH"
+            else
+                EXTRA_MOUNTS+=("--ro-bind" "$EXTRA_PATH" "$EXTRA_PATH")
+                echo "Adding read-only mount: $EXTRA_PATH"
+            fi
         else
             echo "Warning: Extra path does not exist: $arg"
             exit 1
         fi
     else
-        PARSING_EXTRA=false
-        if [[ "$arg" != "--extra" ]]; then
+        PARSING_RW=false
+        PARSING_RO=false
+        if [[ "$arg" != "--rw" && "$arg" != "--ro" ]]; then
             OPENCODE_ARGS+=("$arg")
         fi
     fi
