@@ -4,6 +4,9 @@
 # Only allows access to this repository folder
 
 set -euo pipefail
+if [[ "${TRACE-0}" == "1" ]]; then
+    set -o xtrace
+fi
 
 # Get the absolute path of this script's directory (the repo root)
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +33,9 @@ OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 # Get the parent directories we need to mount
 OPENCODE_MOUNT_BASE="/home"
 
+# OpenCode needs write access to its config/log directory
+OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
+
 echo "Starting isolated opencode session..."
 echo "Repository: $REPO_DIR"
 echo "Working directory inside sandbox: /workspace"
@@ -50,6 +56,7 @@ exec bwrap \
     --ro-bind /etc/ssl /etc/ssl \
     --ro-bind /etc/ca-certificates /etc/ca-certificates \
     --ro-bind "$OPENCODE_MOUNT_BASE" "$OPENCODE_MOUNT_BASE" \
+    --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
     --tmpfs /tmp \
     --tmpfs /var/tmp \
