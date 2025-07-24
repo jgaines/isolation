@@ -30,3 +30,12 @@ This is a bash-based repository containing the `isolate` script for running open
 - Resolve symlinks with `readlink -f` for security
 - Use absolute paths for critical operations
 - Validate file paths and existence before operations
+
+## Version Control
+This project uses Git for version control.
+
+### Workflow
+- After every prompt/change, run `git status` to check for modifications
+- If changes are detected, stage and commit them with: `git add . && git commit -m "description"`
+- Use descriptive commit messages that explain what was changed
+- Follow conventional commit format when possible
