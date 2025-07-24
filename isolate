@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# isolate - Run opencode in an isolated environment using bubblewrap
+# Only allows access to this repository folder
+
+set -euo pipefail
+
+# Get the absolute path of this script's directory (the repo root)
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check if bubblewrap is installed
+if ! command -v bwrap &> /dev/null; then
+    echo "Error: bubblewrap (bwrap) is not installed."
+    echo "Install it with: sudo apt install bubblewrap (Ubuntu/Debian) or sudo dnf install bubblewrap (Fedora)"
+    exit 1
+fi
+
+# Check if opencode is available and resolve its real path
+if ! command -v opencode &> /dev/null; then
+    echo "Error: opencode is not installed or not in PATH."
+    echo "Make sure opencode is installed and accessible."
+    exit 1
+fi
+
+# Get the real path to opencode binary (resolves symlinks)
+OPENCODE_PATH="$(readlink -f "$(which opencode)")"
+OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
+
+# We need to mount the directory containing the real opencode binary
+# Get the parent directories we need to mount
+OPENCODE_MOUNT_BASE="/home"
+
+echo "Starting isolated opencode session..."
+echo "Repository: $REPO_DIR"
+echo "Working directory inside sandbox: /workspace"
+echo "OpenCode binary: $OPENCODE_PATH"
+echo ""
+
+# Run opencode in bubblewrap sandbox
+exec bwrap \
+    --ro-bind /usr /usr \
+    --ro-bind /lib /lib \
+    --ro-bind /lib64 /lib64 \
+    --ro-bind /bin /bin \
+    --ro-bind /sbin /sbin \
+    --ro-bind /etc/passwd /etc/passwd \
+    --ro-bind /etc/group /etc/group \
+    --ro-bind /etc/nsswitch.conf /etc/nsswitch.conf \
+    --ro-bind /etc/resolv.conf /etc/resolv.conf \
+    --ro-bind /etc/ssl /etc/ssl \
+    --ro-bind /etc/ca-certificates /etc/ca-certificates \
+    --ro-bind "$OPENCODE_MOUNT_BASE" "$OPENCODE_MOUNT_BASE" \
+    --bind "$REPO_DIR" /workspace \
+    --tmpfs /tmp \
+    --tmpfs /var/tmp \
+    --tmpfs /run \
+    --proc /proc \
+    --dev /dev \
+    --unshare-all \
+    --share-net \
+    --new-session \
+    --die-with-parent \
+    --chdir /workspace \
+    "$OPENCODE_PATH" "$@"
