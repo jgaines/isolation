@@ -86,10 +86,10 @@ STANDARD_RO_BINDS=(
     "/etc/ssl"
     "/etc/ca-certificates"
     "/usr/local/bin"
-    "/home/jgaines/.local/bin"
-    "/home/jgaines/.local/share/uv/tools"
-    "/home/jgaines/.local/latest"
-    "/home/jgaines/.local/share/mise/installs"
+    "$HOME/.local/bin"
+    "$HOME/.local/share/uv/tools"
+    "$HOME/.local/latest"
+    "$HOME/.local/share/mise/installs"
     "/home/linuxbrew/.linuxbrew"
 )
 
@@ -112,13 +112,11 @@ echo ""
 for arg in "${OPENCODE_ARGS[@]}"; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
         echo "isolate script - Additional options:"
-        echo "  --ro PATH     Add a read-only bind mount for PATH"
-        echo "  --rw PATH     Add a read-write bind mount for PATH"
+        echo "  --ro PATH [PATH ...]   Add a read-only bind mount for PATH(s)"
+        echo "  --rw PATH [PATH ...]   Add a read-write bind mount for PATH(s)"
         echo ""
         echo "These options can be used multiple times to mount additional directories."
         echo "Paths will be resolved to absolute paths and validated before mounting."
-        echo ""
-        echo "OpenCode help:"
         break
     fi
 done
