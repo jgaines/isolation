@@ -31,7 +31,7 @@ OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 
 # We need to mount the directory containing the real opencode binary
 # Get the parent directories we need to mount
-OPENCODE_MOUNT_BASE="/home"
+OPENCODE_MOUNT_BASE="$OPENCODE_DIR"
 
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
