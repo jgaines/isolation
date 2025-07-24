@@ -26,7 +26,7 @@ if ! command -v opencode &> /dev/null; then
 fi
 
 # Get the real path to opencode binary (resolves symlinks)
-OPENCODE_PATH="$(readlink -f "$(which opencode)")"
+OPENCODE_PATH="$(readlink -f "$(command -v opencode)")"
 
 # We need to mount the directory containing the real opencode binary
 # Get the parent directories we need to mount
@@ -107,6 +107,21 @@ if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
     echo "Extra mounts: $((${#EXTRA_MOUNTS[@]} / 3))"
 fi
 echo ""
+
+# Check if --help is being requested and show additional help
+for arg in "${OPENCODE_ARGS[@]}"; do
+    if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+        echo "isolate script - Additional options:"
+        echo "  --ro PATH     Add a read-only bind mount for PATH"
+        echo "  --rw PATH     Add a read-write bind mount for PATH"
+        echo ""
+        echo "These options can be used multiple times to mount additional directories."
+        echo "Paths will be resolved to absolute paths and validated before mounting."
+        echo ""
+        echo "OpenCode help:"
+        break
+    fi
+done
 
 # Run opencode in bubblewrap sandbox
 exec bwrap \
