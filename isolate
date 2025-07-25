@@ -103,7 +103,6 @@ STANDARD_RO_BINDS=(
     "/etc/ssl"
     "/etc/ca-certificates"
     "/usr/local/bin"
-    "/home/linuxbrew/.linuxbrew"
     "$HOME"
 )
 
@@ -126,6 +125,15 @@ RO_BIND_ARGS=()
 for path in "${STANDARD_RO_BINDS[@]}"; do
     RO_BIND_ARGS+=("--ro-bind" "$path" "$path")
 done
+
+# Detect and add Homebrew/Linuxbrew prefix if brew is available
+if command -v brew &> /dev/null; then
+    BREW_PREFIX="$(brew config 2>/dev/null | grep "HOMEBREW_PREFIX:" | cut -d: -f2 | xargs)"
+    if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX" ]]; then
+        RO_BIND_ARGS+=("--ro-bind" "$BREW_PREFIX" "$BREW_PREFIX")
+        echo "Detected Homebrew at: $BREW_PREFIX"
+    fi
+fi
 
 # Build the tmpfs arguments array for hidden directories
 TMPFS_ARGS=()
