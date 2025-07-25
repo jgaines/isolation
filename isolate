@@ -98,10 +98,32 @@ STANDARD_RO_BINDS=(
     "/home/linuxbrew/.linuxbrew"
 )
 
+# Define directories to hide with tmpfs overlays
+HIDDEN_DIRS=(
+    "/tmp"
+    "/var/tmp"
+    "/run"
+    "$HOME/.ssh"
+    "$HOME/.gnupg"
+    "$HOME/.aws"
+)
+
 # Build the ro-bind arguments array
 RO_BIND_ARGS=()
 for path in "${STANDARD_RO_BINDS[@]}"; do
     RO_BIND_ARGS+=("--ro-bind" "$path" "$path")
+done
+
+# Build the tmpfs arguments array for hidden directories
+TMPFS_ARGS=()
+for path in "${HIDDEN_DIRS[@]}"; do
+    # Ensure the path is absolute and valid
+    if [[ "$path" != /* ]]; then
+        echo "Error: TMPFS directory path must be absolute: $path"
+        exit 1
+    else
+        TMPFS_ARGS+=("--tmpfs" "$path")
+    fi
 done
 
 echo "Starting isolated opencode session..."
@@ -132,9 +154,7 @@ exec bwrap \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
-    --tmpfs /tmp \
-    --tmpfs /var/tmp \
-    --tmpfs /run \
+    "${TMPFS_ARGS[@]}" \
     --proc /proc \
     --dev /dev \
     --unshare-all \
