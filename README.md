@@ -21,6 +21,7 @@ ignore file.
 
 - **Secure isolation**: Uses bubblewrap to create a minimal sandbox
 - **Limited write access**: Only allows write access to the current directory (you can specify additional directories)
+- **Directory hiding**: Hide sensitive directories with tmpfs overlays
 - **Network access**: Maintains network connectivity for AI functionality
 - **Custom mounts**: Supports additional read-only and read-write directory mounts
 - **Transparent operation**: Passes all opencode arguments through seamlessly
@@ -87,18 +88,25 @@ isolate "Add error handling to the main function"
 
 Mount additional directories as read-only:
 ```bash
-isolate --ro /path/to/docs /usr/share/templates
+isolate --ro /path/to/docs /usr/share/templates -- run "Build docs"
 ```
 
 Mount additional directories as read-write:
 ```bash
-isolate --rw /tmp/workspace /home/user/shared
+isolate --rw /tmp/workspace /home/user/shared -- "Process files"
+```
+
+Hide directories with tmpfs overlays:
+```bash
+isolate --hide /home/user/.secrets /tmp/sensitive -- auth
 ```
 
 Combine multiple mount types:
 ```bash
-isolate --ro /usr/share/docs /etc/config --rw /tmp/build /var/output "Build the project"
+isolate --ro /usr/share/docs --rw /tmp/build --hide /home/user/.env -- run "Build project"
 ```
+
+**Note**: Use `--` to separate mount options from opencode arguments (recommended when using mount options with opencode commands).
 
 ## How It Works
 
@@ -115,12 +123,37 @@ The script creates a bubblewrap sandbox that:
    - Mounts opencode binary and dependencies
    - Maintains access to opencode's config directory
    - Preserves network access for AI features
+4. **Hides sensitive directories** with tmpfs overlays:
+   - `~/.ssh` (SSH keys)
+   - `~/.aws` (AWS credentials)
+   - `~/.gnupg` (GPG keys)
+   - Additional directories can be hidden with `--hide`
+
+## Directory Hiding with tmpfs
+
+The script automatically hides sensitive directories using tmpfs overlays, which means these directories appear empty inside the sandbox even though they exist on your system. This prevents AI from accidentally reading or modifying sensitive files.
+
+### Default Hidden Directories
+
+- `~/.ssh` - SSH private keys and configuration
+- `~/.aws` - AWS credentials and configuration
+- `~/.gnupg` - GPG keys and configuration
+- `/tmp`, `/var/tmp`, `/run` - Temporary directories (replaced with clean tmpfs)
+
+### Custom Hidden Directories
+
+Use the `--hide` option to hide additional directories:
+
+```bash
+isolate --hide /path/to/sensitive/dir -- run "Process data safely"
+```
 
 ## Security Benefits
 
-- **Prevents accidental system modifications**: AI can only modify files in the repository
-- **Protects sensitive data**: No access to home directory, SSH keys, or other personal files
-- **Limits blast radius**: Even if something goes wrong, damage is contained to the repository
+- **Prevents accidental system modifications**: AI can only modify files in the repository and explicitly mounted directories
+- **Protects sensitive data**: Uses tmpfs overlays to hide sensitive directories like SSH keys, AWS credentials, and GPG keys
+- **Limited home directory access**: Read-only access to home directory for dotfiles, but sensitive subdirectories are hidden
+- **Limits blast radius**: Even if something goes wrong, damage is contained to allowed directories
 - **Transparent operation**: Works exactly like regular opencode but safer
 
 ## Environment Variables
@@ -139,7 +172,17 @@ Ensure opencode is properly installed and accessible. Test with `opencode --help
 Make sure the `isolate` script is executable: `chmod +x isolate`
 
 ### Extra mount path does not exist
-Verify that paths specified with `--ro` or `--rw` exist and are accessible.
+Verify that paths specified with `--ro`, `--rw`, or `--hide` exist and are accessible.
+
+### Using mount options with opencode commands
+When using mount options with opencode commands, use the `--` delimiter:
+```bash
+# Correct
+isolate --ro /path -- run "command"
+
+# Incorrect - will try to mount "run" as a directory
+isolate --ro /path run "command"
+```
 
 ## Contributing
 
