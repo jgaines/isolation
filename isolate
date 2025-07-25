@@ -35,13 +35,14 @@ OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
 
-# Parse command line arguments for --rw, --ro, and --hide flags
+# Parse command line arguments for --rw, --ro, --hide, and --docker flags
 EXTRA_MOUNTS=()
 EXTRA_TMPFS=()
 OPENCODE_ARGS=()
 PARSING_RW=false
 PARSING_RO=false
 PARSING_HIDE=false
+ENABLE_DOCKER=false
 
 for arg in "$@"; do
     if [[ "$arg" == "--" ]]; then
@@ -61,6 +62,11 @@ for arg in "$@"; do
         PARSING_HIDE=true
         PARSING_RW=false
         PARSING_RO=false
+    elif [[ "$arg" == "--docker" ]]; then
+        ENABLE_DOCKER=true
+        PARSING_RW=false
+        PARSING_RO=false
+        PARSING_HIDE=false
     elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true || "$PARSING_HIDE" == true) && "$arg" != --* ]]; then
         # Resolve to absolute path and validate existence
         EXTRA_PATH="$(readlink -f "$arg")"
@@ -83,7 +89,7 @@ for arg in "$@"; do
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
-        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" && "$arg" != "--" ]]; then
+        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" && "$arg" != "--docker" && "$arg" != "--" ]]; then
             OPENCODE_ARGS+=("$arg")
         fi
     fi
@@ -157,12 +163,49 @@ for path in "${EXTRA_TMPFS[@]}"; do
     TMPFS_ARGS+=("--tmpfs" "$path")
 done
 
+# Docker socket access setup
+DOCKER_ARGS=()
+if [[ "$ENABLE_DOCKER" == true ]]; then
+    DOCKER_SOCKET="/var/run/docker.sock"
+    if [[ -S "$DOCKER_SOCKET" ]]; then
+        DOCKER_ARGS+=("--bind" "$DOCKER_SOCKET" "$DOCKER_SOCKET")
+        echo "Docker socket access enabled: $DOCKER_SOCKET"
+        
+        # Check if docker binary is available and add its directory to mounts if needed
+        if command -v docker &> /dev/null; then
+            DOCKER_PATH="$(readlink -f "$(command -v docker)")"
+            DOCKER_DIR="$(dirname "$DOCKER_PATH")"
+            # Check if docker binary directory is already mounted via standard mounts
+            DOCKER_ALREADY_MOUNTED=false
+            for standard_mount in "${STANDARD_RO_BINDS[@]}"; do
+                if [[ "$DOCKER_DIR" == "$standard_mount"* ]]; then
+                    DOCKER_ALREADY_MOUNTED=true
+                    break
+                fi
+            done
+            if [[ "$DOCKER_ALREADY_MOUNTED" == false ]]; then
+                DOCKER_ARGS+=("--ro-bind" "$DOCKER_DIR" "$DOCKER_DIR")
+                echo "Docker binary directory mounted: $DOCKER_DIR"
+            fi
+        else
+            echo "Warning: docker command not found in PATH. Docker socket is mounted but docker binary may not be accessible."
+        fi
+    else
+        echo "Error: Docker socket not found at $DOCKER_SOCKET"
+        echo "Make sure Docker is running and the socket exists."
+        exit 1
+    fi
+fi
+
 echo "Starting isolated opencode session..."
 echo "Repository: $REPO_DIR"
 echo "Working directory inside sandbox: /workspace"
 echo "OpenCode binary: $OPENCODE_PATH"
 if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
     echo "Extra mounts: $((${#EXTRA_MOUNTS[@]} / 3))"
+fi
+if [[ "$ENABLE_DOCKER" == true ]]; then
+    echo "Docker access: enabled"
 fi
 echo ""
 
@@ -173,6 +216,7 @@ for arg in "${OPENCODE_ARGS[@]}"; do
         echo "  --ro PATH [PATH ...]   Add a read-only bind mount for PATH(s)"
         echo "  --rw PATH [PATH ...]   Add a read-write bind mount for PATH(s)"
         echo "  --hide PATH [PATH ...] Hide PATH(s) with tmpfs overlay"
+        echo "  --docker               Enable Docker socket access"
         echo "  --                     End of mount options (optional)"
         echo ""
         echo "These options can be used multiple times to mount additional directories."
@@ -188,6 +232,7 @@ exec bwrap \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
+    "${DOCKER_ARGS[@]}" \
     "${TMPFS_ARGS[@]}" \
     --proc /proc \
     --dev /dev \
