@@ -116,7 +116,7 @@ for path in "${TMPFS_DIRS[@]}"; do
     if [[ "$path" != /* ]]; then
         echo "Error: TMPFS directory path must be absolute: $path"
         exit 1
-    else
+    elif [[ -d "$path" ]]; then
         TMPFS_ARGS+=("--tmpfs" "$path")
     fi
 done
