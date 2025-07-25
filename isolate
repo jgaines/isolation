@@ -35,38 +35,59 @@ OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
 
-# Parse command line arguments for --rw and --ro flags
+# Parse command line arguments for --rw, --ro, and --hide flags
 EXTRA_MOUNTS=()
+EXTRA_TMPFS=()
 OPENCODE_ARGS=()
 PARSING_RW=false
 PARSING_RO=false
+PARSING_HIDE=false
 
 for arg in "$@"; do
     if [[ "$arg" == "--rw" ]]; then
         PARSING_RW=true
         PARSING_RO=false
+        PARSING_HIDE=false
     elif [[ "$arg" == "--ro" ]]; then
         PARSING_RO=true
         PARSING_RW=false
-    elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true) && "$arg" != --* ]]; then
-        # Resolve to absolute path and validate existence
-        EXTRA_PATH="$(readlink -f "$arg")"
-        if [[ -e "$EXTRA_PATH" ]]; then
-            if [[ "$PARSING_RW" == true ]]; then
-                EXTRA_MOUNTS+=("--bind" "$EXTRA_PATH" "$EXTRA_PATH")
-                echo "Adding read-write mount: $EXTRA_PATH"
-            else
-                EXTRA_MOUNTS+=("--ro-bind" "$EXTRA_PATH" "$EXTRA_PATH")
-                echo "Adding read-only mount: $EXTRA_PATH"
-            fi
+        PARSING_HIDE=false
+    elif [[ "$arg" == "--hide" ]]; then
+        PARSING_HIDE=true
+        PARSING_RW=false
+        PARSING_RO=false
+    elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true || "$PARSING_HIDE" == true) && "$arg" != --* ]]; then
+        # Check if this is an opencode command rather than a path
+        if [[ "$arg" == "run" || "$arg" == "auth" || "$arg" == "agent" || "$arg" == "upgrade" || "$arg" == "serve" || "$arg" == "models" || "$arg" == "install-github" ]]; then
+            # This is an opencode command, stop parsing mount options
+            PARSING_RW=false
+            PARSING_RO=false
+            PARSING_HIDE=false
+            OPENCODE_ARGS+=("$arg")
         else
-            echo "Warning: Extra path does not exist: $arg"
-            exit 1
+            # Resolve to absolute path and validate existence
+            EXTRA_PATH="$(readlink -f "$arg")"
+            if [[ -e "$EXTRA_PATH" ]]; then
+                if [[ "$PARSING_RW" == true ]]; then
+                    EXTRA_MOUNTS+=("--bind" "$EXTRA_PATH" "$EXTRA_PATH")
+                    echo "Adding read-write mount: $EXTRA_PATH"
+                elif [[ "$PARSING_RO" == true ]]; then
+                    EXTRA_MOUNTS+=("--ro-bind" "$EXTRA_PATH" "$EXTRA_PATH")
+                    echo "Adding read-only mount: $EXTRA_PATH"
+                elif [[ "$PARSING_HIDE" == true ]]; then
+                    EXTRA_TMPFS+=("$EXTRA_PATH")
+                    echo "Adding hidden mount (tmpfs): $EXTRA_PATH"
+                fi
+            else
+                echo "Warning: Extra path does not exist: $arg"
+                exit 1
+            fi
         fi
     else
         PARSING_RW=false
         PARSING_RO=false
-        if [[ "$arg" != "--rw" && "$arg" != "--ro" ]]; then
+        PARSING_HIDE=false
+        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" ]]; then
             OPENCODE_ARGS+=("$arg")
         fi
     fi
@@ -86,8 +107,8 @@ STANDARD_RO_BINDS=(
     "/etc/ssl"
     "/etc/ca-certificates"
     "/usr/local/bin"
-    "$HOME"
     "/home/linuxbrew/.linuxbrew"
+    "$HOME"
 )
 
 # Define tmpfs directories
@@ -98,8 +119,9 @@ TMPFS_DIRS=(
     "/tmp"
     "/var/tmp"
     "/run"
-    "$HOME/.ssh"
+    "$HOME/.aws"
     "$HOME/.gnupg"
+    "$HOME/.ssh"
     "$HOME/tmp"
 )
 
@@ -121,6 +143,16 @@ for path in "${TMPFS_DIRS[@]}"; do
     fi
 done
 
+# Add extra tmpfs mounts from --hide option
+for path in "${EXTRA_TMPFS[@]}"; do
+    # Ensure the path is absolute (it should be since we resolved it earlier)
+    if [[ "$path" != /* ]]; then
+        echo "Error: TMPFS directory path must be absolute: $path"
+        exit 1
+    fi
+    TMPFS_ARGS+=("--tmpfs" "$path")
+done
+
 echo "Starting isolated opencode session..."
 echo "Repository: $REPO_DIR"
 echo "Working directory inside sandbox: /workspace"
@@ -136,6 +168,7 @@ for arg in "${OPENCODE_ARGS[@]}"; do
         echo "isolate script - Additional options:"
         echo "  --ro PATH [PATH ...]   Add a read-only bind mount for PATH(s)"
         echo "  --rw PATH [PATH ...]   Add a read-write bind mount for PATH(s)"
+        echo "  --hide PATH [PATH ...] Hide PATH(s) with tmpfs overlay"
         echo ""
         echo "These options can be used multiple times to mount additional directories."
         echo "Paths will be resolved to absolute paths and validated before mounting."
