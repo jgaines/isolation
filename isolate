@@ -8,8 +8,8 @@ if [[ "${TRACE-0}" == "1" ]]; then
     set -o xtrace
 fi
 
-# Get the absolute path of this script's directory (the repo root)
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the current working directory
+REPO_DIR="$(pwd)"
 
 # Check if bubblewrap is installed
 if ! command -v bwrap &> /dev/null; then
