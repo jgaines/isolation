@@ -24,6 +24,7 @@ ignore file.
 - **Directory hiding**: Hide sensitive directories with tmpfs overlays
 - **Network access**: Maintains network connectivity for AI functionality
 - **Custom mounts**: Supports additional read-only and read-write directory mounts
+- **Docker integration**: Optional Docker socket access for containerization tasks
 - **Transparent operation**: Passes all opencode arguments through seamlessly
 
 ## Dependencies
@@ -101,29 +102,72 @@ Hide directories with tmpfs overlays:
 isolate --hide /home/user/.secrets /tmp/sensitive -- auth
 ```
 
+Enable Docker socket access for containerization tasks:
+```bash
+isolate --docker run "Help me containerize this application"
+```
+
 Combine multiple mount types:
 ```bash
 isolate --ro /usr/share/docs --rw /tmp/build --hide /home/user/.env -- run "Build project"
 ```
 
+Use Docker with additional mounts:
+```bash
+isolate --docker --rw /tmp/build -- run "Create a Dockerfile and test the build"
+```
+
 **Note**: Use `--` to separate mount options from opencode arguments (recommended when using mount options with opencode commands).
+
+### Docker Integration
+
+The `--docker` flag enables access to the Docker daemon socket, allowing opencode to execute Docker commands within the isolated environment. This is useful for containerization tasks, Docker-based development workflows, and container management.
+
+**Requirements for Docker access:**
+- Docker must be installed and running on the host system
+- The current user must have permission to access the Docker socket (usually by being in the `docker` group)
+- The Docker socket must exist at `/var/run/docker.sock`
+
+**Docker usage examples:**
+```bash
+# Basic Docker access
+isolate --docker
+
+# Ask opencode to create and test a Dockerfile
+isolate --docker run "Create a Dockerfile for this Node.js app and test the build"
+
+# Docker with additional workspace access
+isolate --docker --rw /tmp/docker-builds run "Build and push container images"
+
+# Multiple Docker operations
+isolate --docker run "Create docker-compose.yml, build images, and show running containers"
+```
+
+**Security considerations:**
+- Docker access is opt-in only - it must be explicitly enabled with `--docker`
+- The Docker socket provides significant system access, so only use when needed
+- Docker commands run with the same user permissions as the host system
+- Container builds and runs will have access to the Docker daemon's capabilities
 
 ## How It Works
 
 The script creates a bubblewrap sandbox that:
 
-1. **Mounts the current director** at `/workspace` (read-write)
+1. **Mounts the current directory** at `/workspace` (read-write)
 2. **Provides essential system access** (read-only):
    - System libraries (`/usr`, `/lib`, `/bin`, etc.)
    - Network configuration files
    - SSL certificates
    - Package manager tools (uv, mise, homebrew)
    - Your home directory (read-only, for access to dotfiles)
-3. **Preserves opencode functionality**:
+3. **Optional Docker access** (when `--docker` is used):
+   - Mounts Docker socket at `/var/run/docker.sock`
+   - Provides access to Docker binary and related tools
+4. **Preserves opencode functionality**:
    - Mounts opencode binary and dependencies
    - Maintains access to opencode's config directory
    - Preserves network access for AI features
-4. **Hides sensitive directories** with tmpfs overlays:
+5. **Hides sensitive directories** with tmpfs overlays:
    - `~/.ssh` (SSH keys)
    - `~/.aws` (AWS credentials)
    - `~/.gnupg` (GPG keys)
@@ -173,6 +217,13 @@ Make sure the `isolate` script is executable: `chmod +x isolate`
 
 ### Extra mount path does not exist
 Verify that paths specified with `--ro`, `--rw`, or `--hide` exist and are accessible.
+
+### Docker socket access issues
+If Docker commands fail with the `--docker` flag:
+- Ensure Docker is running: `sudo systemctl status docker`
+- Check if you're in the docker group: `groups | grep docker`
+- Add yourself to docker group if needed: `sudo usermod -aG docker $USER` (requires logout/login)
+- Verify socket exists: `ls -la /var/run/docker.sock`
 
 ### Using mount options with opencode commands
 When using mount options with opencode commands, use the `--` delimiter:
