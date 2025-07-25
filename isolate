@@ -86,10 +86,15 @@ STANDARD_RO_BINDS=(
     "/etc/ssl"
     "/etc/ca-certificates"
     "/usr/local/bin"
-    "$HOME/.local/bin"
-    "$HOME/.local/share/uv/tools"
-    "$HOME/.local/latest"
-    "$HOME/.local/share/mise/installs"
+    # This is a choice I've made to make it so that opencode can see all the
+    # files in my home directory, like my .gitignore file and such.  I could
+    # probably clean this up and move all that junk out of my home directory and
+    # into .cache, .config, .local, etc, but I haven't done that yet.
+    "$HOME"
+    # "$HOME/.local/bin"
+    # "$HOME/.local/share/uv/tools"
+    # "$HOME/.local/latest"
+    # "$HOME/.local/share/mise/installs"
     "/home/linuxbrew/.linuxbrew"
 )
 

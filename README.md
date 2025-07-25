@@ -1,15 +1,26 @@
 # isolate
 
-A secure wrapper script for running [opencode](https://opencode.ai) in an isolated environment using [bubblewrap](https://github.com/containers/bubblewrap).
+A secure wrapper script for running [opencode](https://opencode.ai) in an
+isolated environment using [bubblewrap](https://github.com/containers/bubblewrap).
 
 ## Overview
 
-The `isolate` script provides a sandboxed environment for opencode, restricting file system access to only the current repository directory. This helps prevent unintended modifications to your system while using AI-powered code assistance.
+The `isolate` script provides a sandboxed environment for opencode, restricting
+write access by default to the current directory you start it in and the
+opencode config dir. This helps prevent unintended modifications to your system
+while using AI-powered code assistance.
+
+The main purpose is to restrict write access to just a few directories.  I
+originally started out trying to restrict a lot of its read access, but
+eventually caved in and gave it full read access to my home directory so it can
+see all the dotfiles that live there, like `.gitignore`.  This way it will stop
+checking random crap into my repos every time because it can't see my global git
+ignore file.
 
 ## Features
 
 - **Secure isolation**: Uses bubblewrap to create a minimal sandbox
-- **Repository-only access**: Only allows access to the current repository directory
+- **Limited write access**: Only allows write access to the current directory (you can specify additional directories)
 - **Network access**: Maintains network connectivity for AI functionality
 - **Custom mounts**: Supports additional read-only and read-write directory mounts
 - **Transparent operation**: Passes all opencode arguments through seamlessly
@@ -93,17 +104,17 @@ isolate --ro /usr/share/docs /etc/config --rw /tmp/build /var/output "Build the 
 
 The script creates a bubblewrap sandbox that:
 
-1. **Mounts the repository** at `/workspace` (read-write)
+1. **Mounts the current director** at `/workspace` (read-write)
 2. **Provides essential system access** (read-only):
    - System libraries (`/usr`, `/lib`, `/bin`, etc.)
    - Network configuration files
    - SSL certificates
    - Package manager tools (uv, mise, homebrew)
+   - Your home directory (read-only, for access to dotfiles)
 3. **Preserves opencode functionality**:
    - Mounts opencode binary and dependencies
    - Maintains access to opencode's config directory
    - Preserves network access for AI features
-4. **Isolates everything else**: No access to home directory or other filesystem locations
 
 ## Security Benefits
 
