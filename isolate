@@ -129,7 +129,6 @@ done
 # Run opencode in bubblewrap sandbox
 exec bwrap \
     "${RO_BIND_ARGS[@]}" \
-    --ro-bind "$OPENCODE_DIR" "$OPENCODE_DIR" \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
     --bind "$REPO_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
@@ -143,4 +142,4 @@ exec bwrap \
     --new-session \
     --die-with-parent \
     --chdir /workspace \
-    "$OPENCODE_PATH" "${OPENCODE_ARGS[@]}"
+    opencode "${OPENCODE_ARGS[@]}"
