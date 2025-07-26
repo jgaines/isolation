@@ -25,9 +25,6 @@ if ! command -v opencode &>/dev/null; then
     exit 1
 fi
 
-# Get the real path to opencode binary (resolves symlinks)
-OPENCODE_PATH="$(readlink -f "$(command -v opencode)")"
-
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
 
@@ -196,7 +193,6 @@ fi
 echo "Starting isolated opencode session..."
 echo "Repository: $REPO_DIR"
 echo "Working directory inside sandbox: /workspace"
-echo "OpenCode binary: $OPENCODE_PATH"
 if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
     echo "Extra mounts: $((${#EXTRA_MOUNTS[@]} / 3))"
 fi
