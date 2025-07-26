@@ -36,6 +36,7 @@ PARSING_RW=false
 PARSING_RO=false
 PARSING_HIDE=false
 ENABLE_DOCKER=false
+CURRENT_PATH=""
 
 for arg in "$@"; do
     if [[ "$arg" == "--" ]]; then
@@ -64,6 +65,22 @@ for arg in "$@"; do
         # Resolve to absolute path and validate existence
         EXTRA_PATH="$(readlink -f "$arg")"
         if [[ -e "$EXTRA_PATH" ]]; then
+            # Check for conflicting mount options for the same path
+            for existing_mount in "${EXTRA_MOUNTS[@]}"; do
+                if [[ "$existing_mount" == "$EXTRA_PATH" ]]; then
+                    echo "Error: Path $EXTRA_PATH is already mounted with different options"
+                    echo "Cannot specify conflicting mount options for the same path"
+                    exit 1
+                fi
+            done
+            for existing_tmpfs in "${EXTRA_TMPFS[@]}"; do
+                if [[ "$existing_tmpfs" == "$EXTRA_PATH" ]]; then
+                    echo "Error: Path $EXTRA_PATH is already hidden with tmpfs"
+                    echo "Cannot mount and hide the same path"
+                    exit 1
+                fi
+            done
+            
             if [[ "$PARSING_RW" == true ]]; then
                 EXTRA_MOUNTS+=("--bind" "$EXTRA_PATH" "$EXTRA_PATH")
                 echo "Adding read-write mount: $EXTRA_PATH"
