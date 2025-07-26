@@ -12,14 +12,14 @@ fi
 REPO_DIR="$(pwd)"
 
 # Check if bubblewrap is installed
-if ! command -v bwrap &> /dev/null; then
+if ! command -v bwrap &>/dev/null; then
     echo "Error: bubblewrap (bwrap) is not installed."
     echo "Install it with: sudo apt install bubblewrap (Ubuntu/Debian) or sudo dnf install bubblewrap (Fedora)"
     exit 1
 fi
 
 # Check if opencode is available and resolve its real path
-if ! command -v opencode &> /dev/null; then
+if ! command -v opencode &>/dev/null; then
     echo "Error: opencode is not installed or not in PATH."
     echo "Make sure opencode is installed and accessible."
     exit 1
@@ -133,7 +133,7 @@ for path in "${STANDARD_RO_BINDS[@]}"; do
 done
 
 # Detect and add Homebrew/Linuxbrew prefix if brew is available
-if command -v brew &> /dev/null; then
+if command -v brew &>/dev/null; then
     BREW_PREFIX="$(brew config 2>/dev/null | grep "HOMEBREW_PREFIX:" | cut -d: -f2 | xargs)"
     if [[ -n "$BREW_PREFIX" && -d "$BREW_PREFIX" ]]; then
         RO_BIND_ARGS+=("--ro-bind" "$BREW_PREFIX" "$BREW_PREFIX")
@@ -170,9 +170,9 @@ if [[ "$ENABLE_DOCKER" == true ]]; then
     if [[ -S "$DOCKER_SOCKET" ]]; then
         DOCKER_ARGS+=("--bind" "$DOCKER_SOCKET" "$DOCKER_SOCKET")
         echo "Docker socket access enabled: $DOCKER_SOCKET"
-        
+
         # Check if docker binary is available and add its directory to mounts if needed
-        if command -v docker &> /dev/null; then
+        if command -v docker &>/dev/null; then
             DOCKER_PATH="$(readlink -f "$(command -v docker)")"
             DOCKER_DIR="$(dirname "$DOCKER_PATH")"
             # Check if docker binary directory is already mounted via standard mounts
