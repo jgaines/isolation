@@ -10,6 +10,10 @@ if [[ "${TRACE-0}" == "1" ]]; then
     set -o xtrace
 fi
 
+# Signal handling for clean termination
+trap 'exit 130' INT   # Handle Ctrl+C
+trap 'exit 143' TERM  # Handle termination
+
 # Get the current working directory
 REPO_DIR="$(pwd)"
 
@@ -74,7 +78,12 @@ for arg in "$@"; do
         PARSING_HIDE=false
     elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true || "$PARSING_HIDE" == true) && "$arg" != --* ]]; then
         # Resolve to absolute path and validate existence
-        EXTRA_PATH="$(readlink -f "$arg")"
+        # Use realpath if available, fallback to readlink -f
+        if command -v realpath >/dev/null 2>&1; then
+            EXTRA_PATH="$(realpath "$arg")"
+        else
+            EXTRA_PATH="$(readlink -f "$arg")"
+        fi
         if [[ -e "$EXTRA_PATH" ]]; then
             # Check for conflicting mount options for the same path
             for existing_mount in "${EXTRA_MOUNTS[@]}"; do
@@ -189,6 +198,12 @@ DOCKER_ARGS=()
 if [[ "$ENABLE_DOCKER" == true ]]; then
     DOCKER_SOCKET="/var/run/docker.sock"
     if [[ -S "$DOCKER_SOCKET" ]]; then
+        # Check if user is in docker group
+        if ! groups | grep -q docker && [[ "$(stat -c '%G' "$DOCKER_SOCKET")" == "docker" ]]; then
+            echo "Warning: You may need to be in the 'docker' group for Docker access"
+            echo "Run: sudo usermod -aG docker $USER && logout/login"
+        fi
+        
         DOCKER_ARGS+=("--bind" "$DOCKER_SOCKET" "$DOCKER_SOCKET")
         echo "Docker socket access enabled: $DOCKER_SOCKET"
 
