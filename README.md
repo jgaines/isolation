@@ -38,7 +38,7 @@ ignore file.
 
 1. Download the script and make it executable:
    ```bash
-   curl -O https://raw.githubusercontent.com/your-repo/isolate/main/isolate
+   curl -O https://raw.githubusercontent.com/jgaines/isolation/main/isolate
    chmod +x isolate
    ```
 
