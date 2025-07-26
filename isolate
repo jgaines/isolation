@@ -28,10 +28,6 @@ fi
 # Get the real path to opencode binary (resolves symlinks)
 OPENCODE_PATH="$(readlink -f "$(command -v opencode)")"
 
-# We need to mount the directory containing the real opencode binary
-# Get the parent directories we need to mount
-OPENCODE_DIR="$(dirname "$OPENCODE_PATH")"
-
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
 
