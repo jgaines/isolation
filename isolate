@@ -3,7 +3,7 @@
 # isolate - Run AI tools in an isolated environment using bubblewrap
 # Only allows access to this repository folder
 
-VERSION="1.1.0"
+VERSION="2.0.0"
 
 set -euo pipefail
 if [[ "${TRACE-0}" == "1" ]]; then
