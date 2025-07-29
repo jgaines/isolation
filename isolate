@@ -33,6 +33,7 @@ fi
 
 # OpenCode needs write access to its config/log directory
 OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
+OPENCODE_CONFIG_DIR_2="$HOME/.config/opencode"
 
 # Parse command line arguments for --rw, --ro, --hide, and --docker flags
 EXTRA_MOUNTS=()
@@ -43,7 +44,7 @@ PARSING_RO=false
 PARSING_HIDE=false
 ENABLE_DOCKER=false
 DRY_RUN_MODE=false
-CURRENT_PATH=""
+
 
 for arg in "$@"; do
     if [[ "$arg" == "--iso-version" ]]; then
@@ -236,6 +237,7 @@ fi
 declare -a bwrap_command=("bwrap" \
     "${RO_BIND_ARGS[@]}" \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
+    --bind "$OPENCODE_CONFIG_DIR_2" "$OPENCODE_CONFIG_DIR_2" \
     --bind "$START_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
     "${DOCKER_ARGS[@]}" \
