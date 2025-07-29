@@ -31,9 +31,11 @@ if ! command -v opencode &>/dev/null; then
     exit 1
 fi
 
-# OpenCode needs write access to its config/log directory
-OPENCODE_CONFIG_DIR="$HOME/.local/share/opencode"
-OPENCODE_CONFIG_DIR_2="$HOME/.config/opencode"
+# Define opencode read-write directories
+OPENCODE_RW_DIRS=(
+    "$HOME/.local/share/opencode"
+    "$HOME/.config/opencode"
+)
 
 # Parse command line arguments for --rw, --ro, --hide, and --docker flags
 EXTRA_MOUNTS=()
@@ -194,6 +196,15 @@ for path in "${EXTRA_TMPFS[@]}"; do
     TMPFS_ARGS+=("--tmpfs" "$path")
 done
 
+# Build the opencode read-write bind arguments array
+OPENCODE_BIND_ARGS=()
+for path in "${OPENCODE_RW_DIRS[@]}"; do
+    # Only add bind mount if the directory exists
+    if [[ -d "$path" ]]; then
+        OPENCODE_BIND_ARGS+=("--bind" "$path" "$path")
+    fi
+done
+
 # Docker socket access setup
 DOCKER_ARGS=()
 if [[ "$ENABLE_DOCKER" == true ]]; then
@@ -236,8 +247,7 @@ fi
 # Prepare the bwrap command
 declare -a bwrap_command=("bwrap" \
     "${RO_BIND_ARGS[@]}" \
-    --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
-    --bind "$OPENCODE_CONFIG_DIR_2" "$OPENCODE_CONFIG_DIR_2" \
+    "${OPENCODE_BIND_ARGS[@]}" \
     --bind "$START_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
     "${DOCKER_ARGS[@]}" \
