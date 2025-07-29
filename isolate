@@ -15,7 +15,7 @@ trap 'exit 130' INT   # Handle Ctrl+C
 trap 'exit 143' TERM  # Handle termination
 
 # Get the current working directory
-REPO_DIR="$(pwd)"
+START_DIR="$(pwd)"
 
 # Check if bubblewrap is installed
 if ! command -v bwrap &>/dev/null; then
@@ -236,7 +236,7 @@ fi
 declare -a bwrap_command=("bwrap" \
     "${RO_BIND_ARGS[@]}" \
     --bind "$OPENCODE_CONFIG_DIR" "$OPENCODE_CONFIG_DIR" \
-    --bind "$REPO_DIR" /workspace \
+    --bind "$START_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
     "${DOCKER_ARGS[@]}" \
     "${TMPFS_ARGS[@]}" \
@@ -258,7 +258,7 @@ fi
 
 # Execute the command
 echo "Starting isolated opencode session..."
-echo "Repository: $REPO_DIR"
+echo "Start dir: $START_DIR"
 echo "Working directory inside sandbox: /workspace"
 if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
     echo "Extra mounts: $((${#EXTRA_MOUNTS[@]} / 3))"
