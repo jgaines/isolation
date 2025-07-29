@@ -47,17 +47,23 @@ GEMINI_RW_DIRS=(
     "$HOME/.gemini"
 )
 
-# Parse command line arguments for --rw, --ro, --hide, --docker, and --iso-tool flags
+# Check if first argument is a tool name
+if [[ $# -gt 0 && ("$1" == "opencode" || "$1" == "claude" || "$1" == "gemini") ]]; then
+    ISOLATED_TOOL="$1"
+    echo "Selected tool: $ISOLATED_TOOL"
+    # Remove the tool name from arguments
+    shift
+fi
+
+# Parse command line arguments for --rw, --ro, --hide, and --docker flags
 EXTRA_MOUNTS=()
 EXTRA_TMPFS=()
 TOOL_ARGS=()
 PARSING_RW=false
 PARSING_RO=false
 PARSING_HIDE=false
-PARSING_TOOL=false
 ENABLE_DOCKER=false
 DRY_RUN_MODE=false
-
 
 for arg in "$@"; do
     if [[ "$arg" == "--iso-version" ]]; then
@@ -68,49 +74,28 @@ for arg in "$@"; do
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
-        PARSING_TOOL=false
     elif [[ "$arg" == "--rw" ]]; then
         PARSING_RW=true
         PARSING_RO=false
         PARSING_HIDE=false
-        PARSING_TOOL=false
     elif [[ "$arg" == "--ro" ]]; then
         PARSING_RO=true
         PARSING_RW=false
         PARSING_HIDE=false
-        PARSING_TOOL=false
     elif [[ "$arg" == "--hide" ]]; then
         PARSING_HIDE=true
         PARSING_RW=false
         PARSING_RO=false
-        PARSING_TOOL=false
-    elif [[ "$arg" == "--iso-tool" ]]; then
-        PARSING_TOOL=true
-        PARSING_RW=false
-        PARSING_RO=false
-        PARSING_HIDE=false
     elif [[ "$arg" == "--docker" ]]; then
         ENABLE_DOCKER=true
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
-        PARSING_TOOL=false
     elif [[ "$arg" == "--iso-dry-run" ]]; then
         DRY_RUN_MODE=true
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
-        PARSING_TOOL=false
-    elif [[ "$PARSING_TOOL" == true && "$arg" != --* ]]; then
-        # Validate tool selection
-        if [[ "$arg" == "opencode" || "$arg" == "claude" || "$arg" == "gemini" ]]; then
-            ISOLATED_TOOL="$arg"
-            echo "Selected tool: $ISOLATED_TOOL"
-        else
-            echo "Error: Invalid tool '$arg'. Supported tools: opencode, claude, gemini"
-            exit 1
-        fi
-        PARSING_TOOL=false
     elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true || "$PARSING_HIDE" == true) && "$arg" != --* ]]; then
         # Resolve to absolute path and validate existence
         # Use realpath if available, fallback to readlink -f
@@ -154,8 +139,7 @@ for arg in "$@"; do
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
-        PARSING_TOOL=false
-        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" && "$arg" != "--docker" && "$arg" != "--iso-dry-run" && "$arg" != "--iso-tool" && "$arg" != "--" ]]; then
+        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" && "$arg" != "--docker" && "$arg" != "--iso-dry-run" && "$arg" != "--" ]]; then
             TOOL_ARGS+=("$arg")
         fi
     fi
@@ -342,15 +326,27 @@ echo ""
 # Check if --help is being requested and show additional help
 for arg in "${TOOL_ARGS[@]}"; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
-        echo "isolate script - Additional options:"
+        echo "isolate script - Usage:"
+        echo "  isolate [TOOL] [OPTIONS] -- [TOOL_ARGS]"
+        echo ""
+        echo "Tools:"
+        echo "  opencode               OpenCode (default)"
+        echo "  claude                 Claude CLI"
+        echo "  gemini                 Gemini CLI"
+        echo ""
+        echo "Options:"
         echo "  --docker               Enable Docker socket access"
         echo "  --hide PATH [PATH ...] Hide PATH(s) with tmpfs overlay"
         echo "  --iso-dry-run          Show the bwrap command without executing it"
-        echo "  --iso-tool TOOL        Specify tool to isolate (opencode, claude, gemini)"
         echo "  --iso-version          Show isolate script version"
         echo "  --ro PATH [PATH ...]   Add a read-only bind mount for PATH(s)"
         echo "  --rw PATH [PATH ...]   Add a read-write bind mount for PATH(s)"
         echo "  --                     End of mount options (optional)"
+        echo ""
+        echo "Examples:"
+        echo "  isolate                                    # Run opencode (default)"
+        echo "  isolate claude \"Review this code\"          # Run claude with prompt"
+        echo "  isolate gemini --docker -- \"Help me\"      # Run gemini with Docker access"
         echo ""
         echo "These options can be used multiple times to mount additional directories."
         echo "Paths will be resolved to absolute paths and validated before mounting."

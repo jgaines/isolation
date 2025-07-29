@@ -73,13 +73,13 @@ isolate
 Specify a different tool:
 
 ```bash
-isolate --iso-tool claude
-isolate --iso-tool gemini
+isolate claude
+isolate gemini
 ```
 
 ### Multi-tool Support
 
-The `--iso-tool` option allows you to specify which AI tool to run:
+You can specify which AI tool to run by providing the tool name as the first argument:
 
 - **opencode** (default)
 - **claude**: Needs `~/.claud` directory and `~/.claude.json` file
@@ -92,42 +92,42 @@ Example commands:
 isolate "Add error handling to the main function"
 
 # Run claude
-isolate --iso-tool claude "Review this code for bugs"
+isolate claude "Review this code for bugs"
 
 # Run gemini
-isolate --iso-tool gemini "Explain this algorithm"
+isolate gemini "Explain this algorithm"
 ```
 
 ### Additional Mount Options
 
 Mount additional directories as read-only:
 ```bash
-isolate --ro /path/to/docs /usr/share/templates -- run "Build docs"
+isolate claude --ro /path/to/docs /usr/share/templates -- "Build docs"
 ```
 
 Mount additional directories as read-write:
 ```bash
-isolate --rw /tmp/workspace /home/user/shared -- "Process files"
+isolate gemini --rw /tmp/workspace /home/user/shared -- "Process files"
 ```
 
 Hide directories with tmpfs overlays:
 ```bash
-isolate --hide /home/user/.secrets /tmp/sensitive -- auth
+isolate --hide /home/user/.secrets /tmp/sensitive -- "Review code"
 ```
 
 Enable Docker socket access for containerization tasks:
 ```bash
-isolate --docker run "Help me containerize this application"
+isolate claude --docker "Help me containerize this application"
 ```
 
 Combine multiple mount types:
 ```bash
-isolate --ro /usr/share/docs --rw /tmp/build --hide /home/user/.env -- run "Build project"
+isolate --ro /usr/share/docs --rw /tmp/build --hide /home/user/.env -- "Build project"
 ```
 
 Use Docker with additional mounts:
 ```bash
-isolate --docker --rw /tmp/build -- run "Create a Dockerfile and test the build"
+isolate gemini --docker --rw /tmp/build -- "Create a Dockerfile and test the build"
 ```
 
 **Note**: Use `--` to separate mount options from opencode arguments (recommended when using mount options with opencode commands).
