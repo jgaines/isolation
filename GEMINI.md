@@ -3,13 +3,18 @@
 ## Project Overview
 
 This is a bash-based repository containing the `isolate` script for running
-opencode in an isolated environment using bubblewrap.
+AI tools in an isolated environment using bubblewrap.
+
+Supported tools:
+- `opencode` (default)
+- `claude`
+- `gemini`
 
 ## Build/Test Commands
 
 - **No build system**: This is a simple bash script project
 - **Testing**: Run `./isolate --help` to test basic functionality
-- **Dependencies check**: Verify `bwrap` and `opencode` are installed
+- **Dependencies check**: Verify `bwrap` and the desired tool (`opencode`, `claude`, `gemini`) are installed
 - **Script validation**: Use `shellcheck isolate` for bash linting
 
 ## Code Style Guidelines
@@ -37,13 +42,24 @@ opencode in an isolated environment using bubblewrap.
 - Use absolute paths for critical operations
 - Validate file paths and existence before operations
 
+## Usage
+
+The `isolate` script supports the following command-line flags:
+
+- `--iso-version`: Display the version of the `isolate` script.
+- `--iso-dry-run`: Show the `bwrap` command without executing it.
+- `--docker`: Enable Docker socket access within the isolated environment.
+- `--hide PATH`: Hide a path by overlaying it with a `tmpfs`.
+- `--ro PATH`: Mount a path as read-only.
+- `--rw PATH`: Mount a path as read-write.
+
 ## Version Control
 
-This project uses Jujutsu for version control.
+This project uses Jujutsu for version control. The main branch is `main@origin`.
 
 ### Workflow
 
 - After every prompt/change, run `jj status` to check for modifications
-- If changes are detected, commit them with: `jj commit -m "description" --author "gemini <gemini@jgaines.com>"`
+- If changes are detected, commit them with: `jj commit -m 'description' --author 'gemini <gemini@jgaines.com>'`
 - Use descriptive commit messages that explain what was changed
 - Follow conventional commit format when possible
