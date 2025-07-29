@@ -254,4 +254,4 @@ Feel free to submit issues and enhancement requests. The script is designed to b
 
 ## License
 
-This project is released under the same license as your preferred open source license.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
