@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# isolate - Run opencode in an isolated environment using bubblewrap
+# isolate - Run AI tools in an isolated environment using bubblewrap
 # Only allows access to this repository folder
 
 VERSION="1.1.0"
@@ -24,26 +24,37 @@ if ! command -v bwrap &>/dev/null; then
     exit 1
 fi
 
-# Check if opencode is available and resolve its real path
-if ! command -v opencode &>/dev/null; then
-    echo "Error: opencode is not installed or not in PATH."
-    echo "Make sure opencode is installed and accessible."
-    exit 1
-fi
+# Tool checking will be done after argument parsing
 
-# Define opencode read-write directories
+# Default tool to isolate
+ISOLATED_TOOL="opencode"
+
+# Define read-write directories for each tool
 OPENCODE_RW_DIRS=(
     "$HOME/.local/share/opencode"
-    "$HOME/.config/opencode"
+    "$HOME/.cache/opencode"
 )
 
-# Parse command line arguments for --rw, --ro, --hide, and --docker flags
+CLAUDE_RW_DIRS=(
+    "$HOME/.claud"
+)
+
+CLAUDE_RW_FILES=(
+    "$HOME/.claude.json"
+)
+
+GEMINI_RW_DIRS=(
+    "$HOME/.gemini"
+)
+
+# Parse command line arguments for --rw, --ro, --hide, --docker, and --iso-tool flags
 EXTRA_MOUNTS=()
 EXTRA_TMPFS=()
-OPENCODE_ARGS=()
+TOOL_ARGS=()
 PARSING_RW=false
 PARSING_RO=false
 PARSING_HIDE=false
+PARSING_TOOL=false
 ENABLE_DOCKER=false
 DRY_RUN_MODE=false
 
@@ -53,32 +64,53 @@ for arg in "$@"; do
         echo "isolate version $VERSION"
         exit 0
     elif [[ "$arg" == "--" ]]; then
-        # End of mount options, everything after this goes to opencode
+        # End of mount options, everything after this goes to the tool
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
+        PARSING_TOOL=false
     elif [[ "$arg" == "--rw" ]]; then
         PARSING_RW=true
         PARSING_RO=false
         PARSING_HIDE=false
+        PARSING_TOOL=false
     elif [[ "$arg" == "--ro" ]]; then
         PARSING_RO=true
         PARSING_RW=false
         PARSING_HIDE=false
+        PARSING_TOOL=false
     elif [[ "$arg" == "--hide" ]]; then
         PARSING_HIDE=true
         PARSING_RW=false
         PARSING_RO=false
+        PARSING_TOOL=false
+    elif [[ "$arg" == "--iso-tool" ]]; then
+        PARSING_TOOL=true
+        PARSING_RW=false
+        PARSING_RO=false
+        PARSING_HIDE=false
     elif [[ "$arg" == "--docker" ]]; then
         ENABLE_DOCKER=true
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
+        PARSING_TOOL=false
     elif [[ "$arg" == "--iso-dry-run" ]]; then
         DRY_RUN_MODE=true
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
+        PARSING_TOOL=false
+    elif [[ "$PARSING_TOOL" == true && "$arg" != --* ]]; then
+        # Validate tool selection
+        if [[ "$arg" == "opencode" || "$arg" == "claude" || "$arg" == "gemini" ]]; then
+            ISOLATED_TOOL="$arg"
+            echo "Selected tool: $ISOLATED_TOOL"
+        else
+            echo "Error: Invalid tool '$arg'. Supported tools: opencode, claude, gemini"
+            exit 1
+        fi
+        PARSING_TOOL=false
     elif [[ ("$PARSING_RW" == true || "$PARSING_RO" == true || "$PARSING_HIDE" == true) && "$arg" != --* ]]; then
         # Resolve to absolute path and validate existence
         # Use realpath if available, fallback to readlink -f
@@ -122,8 +154,9 @@ for arg in "$@"; do
         PARSING_RW=false
         PARSING_RO=false
         PARSING_HIDE=false
-        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" && "$arg" != "--docker" && "$arg" != "--iso-dry-run" && "$arg" != "--" ]]; then
-            OPENCODE_ARGS+=("$arg")
+        PARSING_TOOL=false
+        if [[ "$arg" != "--rw" && "$arg" != "--ro" && "$arg" != "--hide" && "$arg" != "--docker" && "$arg" != "--iso-dry-run" && "$arg" != "--iso-tool" && "$arg" != "--" ]]; then
+            TOOL_ARGS+=("$arg")
         fi
     fi
 done
@@ -196,14 +229,33 @@ for path in "${EXTRA_TMPFS[@]}"; do
     TMPFS_ARGS+=("--tmpfs" "$path")
 done
 
-# Build the opencode read-write bind arguments array
-OPENCODE_BIND_ARGS=()
-for path in "${OPENCODE_RW_DIRS[@]}"; do
-    # Only add bind mount if the directory exists
-    if [[ -d "$path" ]]; then
-        OPENCODE_BIND_ARGS+=("--bind" "$path" "$path")
-    fi
-done
+# Build the read-write bind arguments array based on the selected tool
+TOOL_BIND_ARGS=()
+if [[ "$ISOLATED_TOOL" == "opencode" ]]; then
+    for path in "${OPENCODE_RW_DIRS[@]}"; do
+        # Only add bind mount if the directory exists
+        if [[ -d "$path" ]]; then
+            TOOL_BIND_ARGS+=("--bind" "$path" "$path")
+        fi
+    done
+elif [[ "$ISOLATED_TOOL" == "claude" ]]; then
+    for path in "${CLAUDE_RW_DIRS[@]}"; do
+        if [[ -d "$path" ]]; then
+            TOOL_BIND_ARGS+=("--bind" "$path" "$path")
+        fi
+    done
+    for file in "${CLAUDE_RW_FILES[@]}"; do
+        if [[ -f "$file" ]]; then
+            TOOL_BIND_ARGS+=("--bind" "$file" "$file")
+        fi
+    done
+elif [[ "$ISOLATED_TOOL" == "gemini" ]]; then
+    for path in "${GEMINI_RW_DIRS[@]}"; do
+        if [[ -d "$path" ]]; then
+            TOOL_BIND_ARGS+=("--bind" "$path" "$path")
+        fi
+    done
+fi
 
 # Docker socket access setup
 DOCKER_ARGS=()
@@ -247,7 +299,7 @@ fi
 # Prepare the bwrap command
 declare -a bwrap_command=("bwrap" \
     "${RO_BIND_ARGS[@]}" \
-    "${OPENCODE_BIND_ARGS[@]}" \
+    "${TOOL_BIND_ARGS[@]}" \
     --bind "$START_DIR" /workspace \
     "${EXTRA_MOUNTS[@]}" \
     "${DOCKER_ARGS[@]}" \
@@ -259,7 +311,7 @@ declare -a bwrap_command=("bwrap" \
     --new-session \
     --die-with-parent \
     --chdir /workspace \
-    opencode "${OPENCODE_ARGS[@]}")
+    $ISOLATED_TOOL "${TOOL_ARGS[@]}")
 
 # Execute or show the command if in dry-run mode
 if [[ "$DRY_RUN_MODE" == true ]]; then
@@ -268,8 +320,15 @@ if [[ "$DRY_RUN_MODE" == true ]]; then
     exit 0
 fi
 
+# Check if the selected tool is available
+if ! command -v "$ISOLATED_TOOL" &>/dev/null; then
+    echo "Error: $ISOLATED_TOOL is not installed or not in PATH."
+    echo "Make sure $ISOLATED_TOOL is installed and accessible."
+    exit 1
+fi
+
 # Execute the command
-echo "Starting isolated opencode session..."
+echo "Starting isolated $ISOLATED_TOOL session..."
 echo "Start dir: $START_DIR"
 echo "Working directory inside sandbox: /workspace"
 if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
@@ -281,23 +340,24 @@ fi
 echo ""
 
 # Check if --help is being requested and show additional help
-for arg in "${OPENCODE_ARGS[@]}"; do
+for arg in "${TOOL_ARGS[@]}"; do
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
         echo "isolate script - Additional options:"
+        echo "  --docker               Enable Docker socket access"
+        echo "  --hide PATH [PATH ...] Hide PATH(s) with tmpfs overlay"
+        echo "  --iso-dry-run          Show the bwrap command without executing it"
+        echo "  --iso-tool TOOL        Specify tool to isolate (opencode, claude, gemini)"
+        echo "  --iso-version          Show isolate script version"
         echo "  --ro PATH [PATH ...]   Add a read-only bind mount for PATH(s)"
         echo "  --rw PATH [PATH ...]   Add a read-write bind mount for PATH(s)"
-        echo "  --hide PATH [PATH ...] Hide PATH(s) with tmpfs overlay"
-        echo "  --docker               Enable Docker socket access"
-        echo "  --iso-version          Show isolate script version"
-        echo "  --iso-dry-run          Show the bwrap command without executing it"
         echo "  --                     End of mount options (optional)"
         echo ""
         echo "These options can be used multiple times to mount additional directories."
         echo "Paths will be resolved to absolute paths and validated before mounting."
-        echo "Use '--' to explicitly separate mount options from opencode arguments."
+        echo "Use '--' to explicitly separate mount options from tool arguments."
         break
     fi
 done
 
-# Run the opencode in bubblewrap sandbox
+# Run the selected tool in bubblewrap sandbox
 exec "${bwrap_command[@]}"
