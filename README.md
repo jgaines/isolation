@@ -1,36 +1,26 @@
 # isolate
 
-A secure wrapper script for running [opencode](https://opencode.ai) in an
-isolated environment using [bubblewrap](https://github.com/containers/bubblewrap).
+A secure wrapper script for running AI tools (opencode, claude, gemini) in an isolated environment using [bubblewrap](https://github.com/containers/bubblewrap).
 
 ## Overview
 
-The `isolate` script provides a sandboxed environment for opencode, restricting
-write access by default to the current directory you start it in and the
-opencode config dir. This helps prevent unintended modifications to your system
-while using AI-powered code assistance.
-
-The main purpose is to restrict write access to just a few directories.  I
-originally started out trying to restrict a lot of its read access, but
-eventually caved in and gave it full read access to my home directory so it can
-see all the dotfiles that live there, like `.gitignore`.  This way it will stop
-checking random crap into my repos every time because it can't see my global git
-ignore file.
+The `isolate` script provides a sandboxed environment for various AI tools, restricting write access by default to the current directory you start it in and the tool's respective config dir. This helps prevent unintended modifications to your system while using AI-powered assistance.
 
 ## Features
 
+- **Multi-tool support**: Isolate now supports opencode (default), claude, and gemini
 - **Secure isolation**: Uses bubblewrap to create a minimal sandbox
-- **Limited write access**: Only allows write access to the current directory (you can specify additional directories)
+- **Limited write access**: Restricts write access to specific directories per tool
 - **Directory hiding**: Hide sensitive directories with tmpfs overlays
 - **Network access**: Maintains network connectivity for AI functionality
 - **Custom mounts**: Supports additional read-only and read-write directory mounts
 - **Docker integration**: Optional Docker socket access for containerization tasks
-- **Transparent operation**: Passes all opencode arguments through seamlessly
+- **Transparent operation**: Passes all tool arguments through seamlessly
 
 ## Dependencies
 
 - **bubblewrap**: For sandboxing functionality
-- **opencode**: The AI-powered coding assistant
+- **AI tools**: At least one of the supported tools (opencode, claude, gemini)
 
 ## Installation
 
@@ -74,15 +64,38 @@ sudo pacman -S bubblewrap
 
 ### Basic Usage
 
-Run opencode in the current repository directory:
+Run a supported tool in the current repository directory:
+
 ```bash
 isolate
 ```
 
-All standard opencode arguments are supported:
+Specify a different tool:
+
 ```bash
-isolate --help
+isolate --iso-tool claude
+isolate --iso-tool gemini
+```
+
+### Multi-tool Support
+
+The `--iso-tool` option allows you to specify which AI tool to run:
+
+- **opencode** (default)
+- **claude**: Needs `~/.claud` directory and `~/.claude.json` file
+- **gemini**: Needs `~/.gemini` directory
+
+Example commands:
+
+```bash
+# Run opencode (default)
 isolate "Add error handling to the main function"
+
+# Run claude
+isolate --iso-tool claude "Review this code for bugs"
+
+# Run gemini
+isolate --iso-tool gemini "Explain this algorithm"
 ```
 
 ### Additional Mount Options
@@ -163,9 +176,9 @@ The script creates a bubblewrap sandbox that:
 3. **Optional Docker access** (when `--docker` is used):
    - Mounts Docker socket at `/var/run/docker.sock`
    - Provides access to Docker binary and related tools
-4. **Preserves opencode functionality**:
-   - Mounts opencode binary and dependencies
-   - Maintains access to opencode's config directory
+4. **Preserves AI tool functionality**:
+   - Mounts the selected tool's binary and dependencies
+   - Maintains access to tool-specific config directories
    - Preserves network access for AI features
 5. **Hides sensitive directories** with tmpfs overlays:
    - `~/.ssh` (SSH keys)
@@ -198,7 +211,7 @@ isolate --hide /path/to/sensitive/dir -- run "Process data safely"
 - **Protects sensitive data**: Uses tmpfs overlays to hide sensitive directories like SSH keys, AWS credentials, and GPG keys
 - **Limited home directory access**: Read-only access to home directory for dotfiles, but sensitive subdirectories are hidden
 - **Limits blast radius**: Even if something goes wrong, damage is contained to allowed directories
-- **Transparent operation**: Works exactly like regular opencode but safer
+- **Transparent operation**: Works exactly like the regular AI tools but safer
 
 ## Environment Variables
 
@@ -209,8 +222,8 @@ isolate --hide /path/to/sensitive/dir -- run "Process data safely"
 ### "bubblewrap (bwrap) is not installed"
 Install bubblewrap using your system's package manager (see Installation section).
 
-### "opencode is not installed or not in PATH"
-Ensure opencode is properly installed and accessible. Test with `opencode --help`.
+### "[tool] is not installed or not in PATH"
+Ensure the selected AI tool is properly installed and accessible. Test with `[tool] --help`.
 
 ### Permission denied errors
 Make sure the `isolate` script is executable: `chmod +x isolate`
@@ -225,8 +238,8 @@ If Docker commands fail with the `--docker` flag:
 - Add yourself to docker group if needed: `sudo usermod -aG docker $USER` (requires logout/login)
 - Verify socket exists: `ls -la /var/run/docker.sock`
 
-### Using mount options with opencode commands
-When using mount options with opencode commands, use the `--` delimiter:
+### Using mount options with AI tool commands
+When using mount options with AI tool commands, use the `--` delimiter:
 ```bash
 # Correct
 isolate --ro /path -- run "command"
